@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>LEO 위성 통신 링크 버짓 시뮬레이터 (v2.0: Python-Powered)</title>
+    <style>
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#f0f2f5;display:flex;flex-direction:column;align-items:center;margin:0;padding:20px}h1{color:#333}#main-container{display:flex;gap:20px;align-items:flex-start;width:100%;max-width:1300px}#simulator-column{display:flex;flex-direction:column;align-items:center;flex-basis:700px}#simulator{width:700px;height:400px;border:2px solid #333;background:linear-gradient(to bottom,#87CEEB 0%,#f0f2f5 85%);position:relative;overflow:hidden;border-radius:8px}#ground-station{font-size:50px;position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);transform-origin:center 80%;transition:transform .1s linear}#satellite{font-size:30px;position:absolute}#link-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none}#link-line{stroke-width:3px;stroke-dasharray:5 5}.panel{background-color:#fff;padding:20px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1);margin-bottom:20px}#input-panel{flex:1;min-width:300px}#input-panel h2,#output-panel h2{margin-top:0;border-bottom:1px solid #eee;padding-bottom:10px}.input-group{margin-bottom:15px}.input-group h3{margin-bottom:10px;color:#555}.input-item{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:.95em}.input-item label{flex-basis:60%}.input-item input{width:80px;padding:5px;border:1px solid #ccc;border-radius:4px;text-align:right}#output-panel{flex-basis:700px}.output-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.output-item{font-size:1.1em;display:flex;justify-content:space-between}.output-item span{font-weight:700;font-family:'Courier New',Courier,monospace;padding:4px 8px;border-radius:4px;background-color:#eee;min-width:80px;text-align:right}#status-display{transition:color .2s,background-color .2s}.status-box{grid-column:1 / -1;font-size:1.5em;font-weight:700;text-align:center;padding:15px;border-radius:5px;transition:all .2s}#margin-display{grid-column:1 / -1;font-size:1.3em}
+    </style>
+</head>
+<body>
+
+    <h1>LEO 위성 통신 링크 버짓 시뮬레이터 (v2.0: Python-Powered)</h1>
+    <div id="main-container">
+        <div id="input-panel" class="panel">
+            <h2>시뮬레이션 파라미터</h2>
+            <div class="input-group">
+                <h3>1. 위성 (Satellite)</h3>
+                <div class="input-item">
+                    <label for="sat-altitude">위성 고도 (km):</label>
+                    <input type="number" id="sat-altitude" value="550">
+                </div>
+                <div class="input-item">
+                    <label for="max-elevation">최대 고도각 (deg):</label>
+                    <input type="number" id="max-elevation" value="85">
+                </div>
+            </div>
+            <div class="input-group">
+                <h3>2. 송신 (Uplink/Downlink)</h3>
+                <div class="input-item">
+                    <label for="frequency">주파수 (GHz):</label>
+                    <input type="number" id="frequency" value="12.5">
+                </div>
+                 <div class="input-item">
+                    <label for="sat-power">위성 EIRP (dBW):</label>
+                    <input type="number" id="sat-power" value="20">
+                </div>
+            </div>
+            <div class="input-group">
+                <h3>3. 지상국 (Ground Station)</h3>
+                <div class="input-item">
+                    <label for="min-elevation">최소 링크 고도각 (deg):</label>
+                    <input type="number" id="min-elevation" value="10">
+                </div>
+                <div class="input-item">
+                    <label for="g-t">지상국 G/T (dB/K):</label>
+                    <input type="number" id="g-t" value="15.0">
+                </div>
+                <div class="input-item">
+                    <label for="zenith-loss">천정 대기손실 (dB):</label>
+                    <input type="number" id="zenith-loss" value="0.5">
+                </div>
+            </div>
+            <div class="input-group">
+                <h3>4. 시스템 요구사항</h3>
+                <div class="input-item">
+                    <label for="required-c-n0">요구 C/N0 (dB-Hz):</label>
+                    <input type="number" id="required-c-n0" value="50.0">
+                </div>
+            </div>
+        </div>
+        <div id="simulator-column">
+            <div id="simulator">
+                <div id="satellite">🛰️</div>
+                <div id="ground-station">📡</div>
+                <svg id="link-svg">
+                    <line id="link-line" x1="350" y1="400" x2="0" y2="0" stroke="red" />
+                </svg>
+            </div>
+            <div id="output-panel" class="panel">
+                <h2>실시간 링크 버짓 (Python 서버 연동 중)</h2>
+                <div class="output-grid">
+                    <div class="output-item status-box" id="status-box">
+                        <span id="status-display">SEARCHING</span>
+                    </div>
+                    <div class="output-item"><label>경과 시간 (s):</label><span id="time-display">0.0</span></div>
+                    <div class="output-item"><label>현재 고도각 (deg):</label><span id="elevation-display">0.0</span></div>
+                    <div class="output-item"><label>경사 거리 (km):</label><span id="distance-display">-.--</span></div>
+                    <div class="output-item"><label>방위각 (deg):</label><span id="azimuth-display">0.0</span></div>
+                    <div class="output-item"><label>경로 손실 (dB):</label><span id="lfs-display">-.--</span></div>
+                    <div class="output-item"><label>대기 손실 (dB):</label><span id="la-display">-.--</span></div>
+                    <div class="output-item"><label>계산된 C/N0 (dB-Hz):</label><span id="cn0-display">-.--</span></div>
+                    <div class="output-item" id="margin-display"><label>링크 마진 (dB):</label><span id="margin-display-span">-.--</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Python 서버 주소 ---
+        const API_URL = 'http://127.0.0.1:5000/calculate';
+
+        // --- DOM 요소 (동일) ---
+        const satellite = document.getElementById('satellite');
+        const groundStation = document.getElementById('ground-station');
+        const linkLine = document.getElementById('link-line');
+        const statusDisplay = document.getElementById('status-display');
+        const statusBox = document.getElementById('status-box');
+        const azimuthDisplay = document.getElementById('azimuth-display');
+        const elevationDisplay = document.getElementById('elevation-display');
+        const timeDisplay = document.getElementById('time-display');
+        const distanceDisplay = document.getElementById('distance-display');
+        const lfsDisplay = document.getElementById('lfs-display');
+        const laDisplay = document.getElementById('la-display');
+        const cn0Display = document.getElementById('cn0-display');
+        const marginDisplaySpan = document.getElementById('margin-display-span');
+
+        // --- 입력 요소 (동일) ---
+        const inputs = {
+            satAltitude: document.getElementById('sat-altitude'),
+            maxElevation: document.getElementById('max-elevation'),
+            frequency: document.getElementById('frequency'),
+            satPower: document.getElementById('sat-power'),
+            minElevation: document.getElementById('min-elevation'),
+            g_t: document.getElementById('g-t'),
+            zenithLoss: document.getElementById('zenith-loss'),
+            required_c_n0: document.getElementById('required-c-n0')
+        };
+        
+        let params = {};
+        function readInputs() {
+            for (let key in inputs) {
+                params[key] = parseFloat(inputs[key].value);
+            }
+        }
+        Object.values(inputs).forEach(input => { input.onchange = readInputs; });
+        readInputs(); // 초기값 로드
+
+        // --- 시뮬레이션 상수 (동일) ---
+        const SIM_WIDTH = 700;
+        const SIM_HEIGHT = 400;
+        const PASS_DURATION_MS = 15000;
+        const ANTENNA_X = SIM_WIDTH / 2;
+        const ANTENNA_Y = SIM_HEIGHT;
+        let startTime = null;
+
+        // --- 시뮬레이션 메인 루프 (async / await로 변경) ---
+        async function update(timestamp) {
+            if (!startTime) startTime = timestamp;
+            
+            const elapsedTime = timestamp - startTime;
+            const progress = (elapsedTime / PASS_DURATION_MS) % 1;
+
+            // 1. 기계적 궤적 계산 (HTML이 담당)
+            const sat_x = progress * SIM_WIDTH;
+            const y_progress = Math.sin(progress * Math.PI);
+            const sat_y = SIM_HEIGHT - (y_progress * (SIM_HEIGHT * 0.8));
+            const azimuth = 90 + (progress * 180);
+            
+            // 2. 안테나 추적 (HTML이 담당)
+            satellite.style.left = (sat_x - 15) + 'px';
+            satellite.style.top = (sat_y - 15) + 'px';
+            const dx = sat_x - ANTENNA_X;
+            const dy = sat_y - ANTENNA_Y;
+            const angleDeg = Math.atan2(dy, dx) * (180 / Math.PI) + 90;
+            groundStation.style.transform = `translateX(-50%) rotate(${angleDeg}deg)`;
+            
+            // 3. 현재 고도각 계산
+            const El_deg = y_progress * params.maxElevation;
+
+            // === 4. Python 서버에 링크 버짓 계산 요청 (핵심!) ===
+            let results = {};
+            try {
+                // 현재 고도각과 모든 파라미터를 서버에 전송
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...params, // 모든 파라미터
+                        current_elevation: El_deg // 현재 고도각 추가
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server Error: ${response.status}`);
+                }
+                
+                // Python 서버로부터 계산 결과 (JSON) 받기
+                results = await response.json();
+
+                // 5. 서버에서 받은 결과로 대시보드 업데이트
+                distanceDisplay.textContent = results.d_km;
+                lfsDisplay.textContent = results.l_fs;
+                laDisplay.textContent = results.l_a;
+                cn0Display.textContent = results.c_n0;
+                marginDisplaySpan.textContent = results.margin;
+                marginDisplaySpan.style.color = (results.margin > 0) ? "green" : "red";
+
+            } catch (error) {
+                // Python 서버가 꺼져있으면 여기로 옴
+                console.error("Python 서버 연결 실패:", error);
+                statusDisplay.textContent = "SERVER DOWN";
+                statusDisplay.style.color = "orange";
+                statusBox.style.backgroundColor = "#fff3e0";
+                
+                // 다음 프레임 요청
+                requestAnimationFrame(update);
+                return; // 함수 종료
+            }
+
+            // 6. 링크 상태 및 SVG 라인 업데이트
+            let status, color;
+            if (results.margin > 0 && El_deg > params.minElevation) {
+                status = "LINK ESTABLISHED";
+                color = "#4CAF50"; // Green
+                statusBox.style.backgroundColor = '#e8f5e9';
+            } else {
+                status = "LINK LOST";
+                color = "#f44336"; // Red
+                statusBox.style.backgroundColor = '#ffebee';
+            }
+
+            linkLine.setAttribute('x2', sat_x);
+            linkLine.setAttribute('y2', sat_y);
+            linkLine.style.stroke = color;
+            
+            // 7. 정보 패널 업데이트
+            statusDisplay.textContent = status;
+            statusDisplay.style.color = color;
+            timeDisplay.textContent = (elapsedTime / 1000).toFixed(1);
+            elevationDisplay.textContent = El_deg.toFixed(1);
+            azimuthDisplay.textContent = azimuth.toFixed(1);
+
+            // 다음 프레임 요청
+            requestAnimationFrame(update);
+        }
+
+        // --- 시뮬레이션 시작 ---
+        requestAnimationFrame(update);
+    </script>
+</body>
+</html>

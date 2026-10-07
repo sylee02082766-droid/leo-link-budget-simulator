@@ -1,0 +1,13 @@
+{
+  "name": "ict-drone-websocket-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Separate classroom-style WebSocket drone-state prototype from the ICT archive.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  }
+}
